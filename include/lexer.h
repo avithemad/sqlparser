@@ -9,7 +9,10 @@ enum token_type {
 	identifier_tok = -5,
 	where_tok = -6,
 	eof_tok = -7,
-	invalid_tok = -8
+	invalid_tok = -8,
+	and_tok = -9,
+	or_tok = -10,
+	pred_tok = -11
 };
 	
 
@@ -26,4 +29,6 @@ public:
 	Lexer(const std::string &src);
 	Token peekToken();
 	void eatToken();
+	int getSrcIdx();
+	std::string printDebug();
 };

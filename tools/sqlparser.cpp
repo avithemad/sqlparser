@@ -10,7 +10,7 @@ int main() {
     //     lex.eatToken();
     // }
 
-    Parser parser("select a, b from t1, t2");
+    Parser parser("select a,b from t1, t2 where a >=b and b>c or c>=d");
     auto sq = parser.ParseSelectQuery();
     if (sq == nullptr) std::cout << "Incorrect syntax\n";
     else std::cout << "Parsed successfully\n";
