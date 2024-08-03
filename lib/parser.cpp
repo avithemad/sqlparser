@@ -3,153 +3,119 @@
 #include<memory>
 #include<iostream>
 
-SelectExp_Ast::SelectExp_Ast(std::vector<std::string> cols) : columns(cols) {}
-TableExp_Ast::TableExp_Ast(std::vector<std::string> tables) : tables(tables) {}
 
-SelectQuery_Ast::SelectQuery_Ast(std::unique_ptr<SelectExp_Ast> selectExp, std::unique_ptr<TableExp_Ast> tableExp) :
-    selectExp(std::move(selectExp)), tableExp(std::move(tableExp)) {}
+SelList_Ast::SelList_Ast(std::vector<std::string> attributes): attributes(attributes){}
+FromList_Ast::FromList_Ast(std::vector<std::string> relations): relations(relations){}
+ConditionalPredicate_Ast::ConditionalPredicate_Ast(std::unique_ptr<Condition_Ast> lhs, std::unique_ptr<Condition_Ast> rhs, logical_op op)
+    : lhs(std::move(lhs)), rhs(std::move(rhs)), op(op) {}
+ConditionalIn_Ast::ConditionalIn_Ast(std::string attr, std::unique_ptr<Query_Ast> query) : attribute(attr), query(std::move(query)) {}
 
-SelectQuery_Ast::SelectQuery_Ast(std::unique_ptr<SelectExp_Ast> selectExp, std::unique_ptr<TableExp_Ast> tableExp,
-        std::unique_ptr<FilterExp_Ast> filterExp) :
-    selectExp(std::move(selectExp)), tableExp(std::move(tableExp)), filterExp(std::move(filterExp)) {}
+ConditionalJoin_Ast::ConditionalJoin_Ast(std::string attr1, std::string attr2, join_op op) :
+    attr1(attr1), attr2(attr2), op(op) {}
 
-FilterExp_Ast::FilterExp_Ast(
-    std::vector<Predicate_Ast> ps, 
-    std::vector<std::string> logicalOp) : logicalOp(logicalOp), predicates(ps)
-{}
-Predicate_Ast::Predicate_Ast(const std::string &lhs, const std::string &rhs, predicate_op_enum op):
-    lhs(lhs), rhs(rhs), op(op) {}
 
+ConditionalLike_Ast::ConditionalLike_Ast(std::string attribute, std::string pattern) : attribute(attribute), pattern(pattern) {}
+
+
+Condition_Ast::Condition_Ast(std::unique_ptr<Base_Ast> condition) : condition(std::move(condition)) {}
+
+
+Query_Ast::Query_Ast(std::unique_ptr<SelList_Ast> sl, std::unique_ptr<FromList_Ast> fl, std::unique_ptr<Condition_Ast> c)
+    : selList(std::move(sl)), fromList(std::move(fl)), condition(std::move(c)) {}
+
+Query_Ast::Query_Ast(std::unique_ptr<SelList_Ast> sl, std::unique_ptr<FromList_Ast> fl)
+    : selList(std::move(sl)), fromList(std::move(fl)) {}
+
+std::unique_ptr<SelList_Ast> Parser::ParseSelList() {
+    std::cout << "Parsing select list\n";
+    Token t = lexer->peekToken();
+    if (t.type!=identifier_tok) return nullptr;
+    lexer->eatToken();
+    std::vector<std::string> attributes;
+    attributes.push_back(t.lexeme);
+    t = lexer->peekToken();
+    while(t.type == comma_tok) {
+        lexer->eatToken();
+        if (lexer->peekToken().type != identifier_tok) return nullptr;
+        attributes.push_back(lexer->peekToken().lexeme);
+        lexer->eatToken();
+        t = lexer->peekToken();
+    }
+    return std::make_unique<SelList_Ast>(attributes);
+}
+std::unique_ptr<FromList_Ast> Parser::ParseFromList() {
+    std::cout << "Parsing from list\n";
+    Token t = lexer->peekToken();
+    if (t.type!=identifier_tok) return nullptr;
+    std::vector<std::string> attributes;
+    attributes.push_back(t.lexeme);
+    lexer->eatToken();
+    t = lexer->peekToken();
+    while(t.type == comma_tok) {
+        lexer->eatToken();
+        if (lexer->peekToken().type != identifier_tok) return nullptr;
+        attributes.push_back(lexer->peekToken().lexeme);
+        lexer->eatToken();
+        t = lexer->peekToken();
+    }
+    return std::make_unique<FromList_Ast>(attributes);
+}
+std::unique_ptr<Condition_Ast> Parser::ParseCondition() {
+    std::cout << "Parsing condition\n";
+    Token t = lexer->peekToken();
+    if (t.type != identifier_tok) return nullptr;
+    lexer->eatToken();
+    std::string attr1 = t.lexeme;
+    std::unique_ptr<Base_Ast> result;
+    t = lexer->peekToken();
+    if (t.type == in_tok) {
+        lexer->eatToken();
+        auto query = ParseQuery();
+        if (query == nullptr) return nullptr;
+        result = std::make_unique<ConditionalIn_Ast>(attr1, std::move(query));
+    } else if (t.type == eq_tok) {
+        lexer->eatToken();
+        if (lexer->peekToken().type != identifier_tok) return nullptr;
+        std::string attr2 = lexer->peekToken().lexeme;
+        lexer->eatToken();
+        result = std::make_unique<ConditionalJoin_Ast>(attr1, attr2, eq);
+    } else if (t.type == like_tok) {
+        lexer->eatToken();
+        if (lexer->peekToken().type != identifier_tok) return nullptr;
+        std::string pattern = lexer->peekToken().lexeme;
+        lexer->eatToken();
+        result = std::make_unique<ConditionalLike_Ast>(attr1, pattern);
+    }
+    std::unique_ptr<Condition_Ast> lhs = std::make_unique<Condition_Ast>(std::move(result));
+    if (lexer->peekToken().type == and_tok) {
+        lexer->eatToken();
+        auto rhs = ParseCondition();
+        if (rhs == nullptr) return nullptr;
+        auto res = std::make_unique<ConditionalPredicate_Ast>(std::move(lhs), std::move(rhs), and_op);
+        return std::make_unique<Condition_Ast>(std::move(res));
+    }
+    return lhs;
+}
+std::unique_ptr<Query_Ast> Parser::ParseQuery() {
+    std::cout << "Parsing query\n";
+    Token t = lexer->peekToken();
+    if (t.type!=select_tok) return nullptr;
+    lexer->eatToken();
+    auto selList = ParseSelList();
+    if (selList == nullptr) return nullptr;
+    t = lexer->peekToken();
+    if (t.type != from_tok) return nullptr;
+    lexer->eatToken();
+    auto fromList = ParseFromList();
+    if (fromList == nullptr) return nullptr;
+    t = lexer->peekToken();
+    if (t.type != where_tok) return std::make_unique<Query_Ast>(std::move(selList), std::move(fromList));
+    lexer->eatToken();
+    auto cond = ParseCondition();
+    if (cond == nullptr) return nullptr;
+    return std::make_unique<Query_Ast>(std::move(selList), std::move(fromList), std::move(cond));
+}
 
 Parser::Parser(const std::string &src) : lexer(std::make_unique<Lexer>(src)) {}
 Parser::Parser(const std::string &src, std::ostream &os) : lexer(std::make_unique<Lexer>(src))
     , logs(os) {}
-
-std::unique_ptr<SelectExp_Ast> Parser::ParseSelectExp() {
-    Token t = lexer->peekToken();
-    if (t.type != star_tok && t.type != identifier_tok) {
-        logs << "Failed parsing select expression. Invalid list of columns\n";
-        logs << lexer->printDebug();
-        return nullptr;
-    } 
-    lexer->eatToken();
-    if (t.type == star_tok) {
-        return std::make_unique<SelectExp_Ast>(std::vector<std::string>(1, "*"));
-    } else { // this is identifier token
-        std::vector<std::string> v(1, t.lexeme);
-        while(lexer->peekToken().type == comma_tok) {
-            lexer->eatToken();
-            if (lexer->peekToken().type!=identifier_tok) {
-                logs << "Failed parsing select expression. Expected another column name after comma\n";
-                logs << lexer->printDebug();
-                return nullptr;
-            }
-            v.push_back(lexer->peekToken().lexeme);
-            lexer->eatToken();
-        }
-        return std::make_unique<SelectExp_Ast>(v);
-    }
-}
-
-std::unique_ptr<TableExp_Ast> Parser::ParseTableExp() {
-    Token t = lexer->peekToken();
-    if (t.type!=identifier_tok) {
-        logs << "Failed parsing table expression. Expected a table name for table expression.\n";
-        logs << lexer->printDebug();
-        return nullptr;
-    }
-    std::vector<std::string> v(1, t.lexeme);
-    lexer->eatToken();
-    while(lexer->peekToken().type == comma_tok) {
-        lexer->eatToken();
-        if (lexer->peekToken().type!=identifier_tok) {
-            logs << "Failed parsing table expression. Expected a table name after comma\n";
-            logs << lexer->printDebug();
-            return nullptr;
-        } 
-        v.push_back(lexer->peekToken().lexeme);
-        lexer->eatToken();
-    }
-    return std::make_unique<TableExp_Ast>(v);
-}
-std::unique_ptr<Predicate_Ast> Parser::ParsePredicate() {
-    Token t = lexer->peekToken();
-    if (t.type!=identifier_tok) {
-        logs << "Failed parsing WHERE clause. Expected an identifier\n";
-        logs << lexer->printDebug();
-        return nullptr;
-    }
-    std::string lhs = t.lexeme;
-    lexer->eatToken();
-
-    t = lexer->peekToken();
-    if (t.type!=pred_tok) {
-        logs << "Failed parsing WHERE clause. Expected a comparison operator <, <=, >, >=, =\n";
-        logs << lexer->printDebug();
-        return nullptr;
-    }
-    predicate_op_enum op;
-    if (t.lexeme == "<") op = lt;
-    else if (t.lexeme == "<=") op = leq;
-    else if (t.lexeme == ">=") op = geq;
-    else if (t.lexeme == ">") op = gt;
-    else if (t.lexeme == "=") op = eq;
-    lexer->eatToken();
-
-    t = lexer->peekToken();
-    if (t.type!=identifier_tok) {
-        logs << "Failed parsing WHERE clause. Expected rhs after comparison operator\n";
-        logs << lexer->printDebug();
-        return nullptr;
-    } 
-    std::string rhs = t.lexeme;
-    lexer->eatToken();
-    return std::make_unique<Predicate_Ast>(lhs, rhs, op);
-}
-std::unique_ptr<FilterExp_Ast> Parser::ParseFilterExp() {
-    // first parse the predicate
-    std::vector<Predicate_Ast> preds;
-    std::vector<std::string> logicalOps;
-
-    do {
-        Token t = lexer->peekToken();
-        if (t.type == and_tok || t.type == or_tok) {
-            logicalOps.push_back(t.lexeme);
-            lexer->eatToken();
-        }
-        auto pred = ParsePredicate();
-        if (pred == nullptr) {
-            return nullptr;
-        }
-        preds.push_back(*pred.get());
-
-            // check if you see an and/or token
-    } while(lexer->peekToken().type == and_tok || lexer->peekToken().type == or_tok);
-
-    return std::make_unique<FilterExp_Ast>(preds, logicalOps);
-}
-std::unique_ptr<SelectQuery_Ast> Parser::ParseSelectQuery() {
-    if (lexer->peekToken().type != select_tok) {
-        return nullptr;
-    }
-    lexer->eatToken();
-    auto selectExp = ParseSelectExp();
-    if (selectExp == nullptr) {
-        return nullptr;
-    }
-    if (lexer->peekToken().type != from_tok) {
-        logs << "Failed parsing SELECT query. FROM clause is missing\n";
-        logs << lexer->printDebug();
-        return nullptr;
-    }
-    lexer->eatToken();
-    auto tableExp = ParseTableExp();
-    if (tableExp == nullptr) return nullptr;
-    if (lexer->peekToken().type != where_tok) 
-        return std::make_unique<SelectQuery_Ast>(std::move(selectExp), std::move(tableExp));
-    // now parse the filterExp
-    lexer->eatToken();
-    auto filterExp = ParseFilterExp();
-    if (filterExp == nullptr) return nullptr;
-    return std::make_unique<SelectQuery_Ast>(std::move(selectExp), std::move(tableExp), std::move(filterExp));
-}

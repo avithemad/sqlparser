@@ -12,7 +12,10 @@ enum token_type {
 	invalid_tok = -8,
 	and_tok = -9,
 	or_tok = -10,
-	pred_tok = -11
+	pred_tok = -11,
+	in_tok = -12,
+	eq_tok = -13,
+	like_tok = -14
 };
 	
 

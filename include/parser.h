@@ -1,26 +1,3 @@
-/* Grammar for sql
- * selectQuery -> [SELECT] selectExp [FROM] tableExp filterExp 
- * selectExp -> [*] | columns // extend this to define other functions as well
- * columns -> column columns'
- * columns' -> [,]column columns' | empty
- * column -> [alphanum_value] | empty
- * tableExp -> table tables'
- * tables' -> [,]table tables' | empty
- * filterExp -> [WHERE] predicates | empty
- * predicates -> predicate pred'
- * pred' -> and predicates | or predicates | empty
- * predicate -> operand op operand
- * op -> >|>=|<|<=|=
- * operand -> identifier | constant
- * constant -> [0-9]+ | "string"
- *
- * Currently only supporting simple queries like
- * SELECT col1, col2 FROM table1, table2 WHERE table1.id = table2.id
- */
-// if columns are prefixed with table name, use that to reference the table column, otherwise use the names of the column directly, same in case of where query
-// Right now only support the CSV files table name is appended with csv file for parsing
-// Backend should be pandas code generated.
-
 #pragma once
 #include "lexer.h"
 #include<string>
@@ -28,50 +5,73 @@
 #include<vector>
 #include<iostream>
 
-enum predicate_op_enum {
-	lt,leq, gt, geq, eq
+enum logical_op {
+    and_op, or_op
 };
-
+enum join_op {
+    eq, le, leq, ge, geq
+};
 class Base_Ast {
 public:
 	virtual ~Base_Ast() = default;
 };
 
-// TODO: need to handle UDFs and aggregations
-class SelectExp_Ast : Base_Ast {
-	std::vector<std::string> columns;
+class SelList_Ast : Base_Ast {
+    std::vector<std::string> attributes;
 public:
-	SelectExp_Ast(std::vector<std::string> cols);
-};
-// TODO: need to handle joins, and SelectQuery
-class TableExp_Ast : Base_Ast {
-	std::vector<std::string> tables;
-public:
-	TableExp_Ast(std::vector<std::string> tables);
+    SelList_Ast(std::vector<std::string> attributes);
 };
 
-// right now represent the operands as just strings, later create ast for these nodes.
-class Predicate_Ast : Base_Ast {
-	std::string lhs, rhs;
-	predicate_op_enum op;
+class FromList_Ast : Base_Ast {
+    std::vector<std::string> relations;
 public:
-	Predicate_Ast(const std::string &lhs, const std::string &rhs, predicate_op_enum op);	
-};
-class FilterExp_Ast : Base_Ast {
-	std::vector<Predicate_Ast> predicates;
-	std::vector<std::string> logicalOp;
-public:
-	FilterExp_Ast(std::vector<Predicate_Ast> predicates, std::vector<std::string> logicalOp);
+    FromList_Ast(std::vector<std::string> relations);
 };
 
-class SelectQuery_Ast : Base_Ast {
-	std::unique_ptr<SelectExp_Ast> selectExp;
-	std::unique_ptr<TableExp_Ast> tableExp;
-	std::unique_ptr<FilterExp_Ast> filterExp;
+class Condition_Ast : public Base_Ast {
+    std::unique_ptr<Base_Ast> condition;
 public:
-	SelectQuery_Ast(std::unique_ptr<SelectExp_Ast> selectExp, std::unique_ptr<TableExp_Ast> tableExp);
-	SelectQuery_Ast(std::unique_ptr<SelectExp_Ast> selectExp, std::unique_ptr<TableExp_Ast> tableExp, std::unique_ptr<FilterExp_Ast> FilterExp_Ast);
+    Condition_Ast(std::unique_ptr<Base_Ast> condition);
 };
+class ConditionalPredicate_Ast : public Base_Ast {
+   logical_op op;
+   std::unique_ptr<Condition_Ast> lhs;
+   std::unique_ptr<Condition_Ast> rhs;
+public:
+    ConditionalPredicate_Ast(std::unique_ptr<Condition_Ast> lhs, std::unique_ptr<Condition_Ast> rhs, logical_op op);
+};
+
+class Query_Ast : Base_Ast{
+    std::unique_ptr<SelList_Ast> selList;
+    std::unique_ptr<FromList_Ast> fromList;
+    std::unique_ptr<Condition_Ast> condition;
+public:
+    Query_Ast(std::unique_ptr<SelList_Ast> sl, std::unique_ptr<FromList_Ast> fl);
+    Query_Ast(std::unique_ptr<SelList_Ast> sl, std::unique_ptr<FromList_Ast> fl, std::unique_ptr<Condition_Ast> c);
+};
+class ConditionalIn_Ast : public Base_Ast {
+    std::string attribute;
+    std::unique_ptr<Query_Ast> query;
+public:
+    ConditionalIn_Ast(std::string attr, std::unique_ptr<Query_Ast> query);
+};
+
+class ConditionalJoin_Ast : public Base_Ast {
+    std::string attr1;
+    std::string attr2;
+    join_op op;
+public:
+    ConditionalJoin_Ast(std::string attr1, std::string attr2, join_op op);
+};
+
+class ConditionalLike_Ast : public Base_Ast {
+    std::string attribute;
+    std::string pattern;
+public:
+    ConditionalLike_Ast(std::string attribute, std::string pattern);
+};
+
+
 
 class Parser {
 	std::unique_ptr<Lexer> lexer;
@@ -79,9 +79,9 @@ class Parser {
 public:
 	Parser(const std::string &src);
 	Parser(const std::string &src, std::ostream &os);
-	std::unique_ptr<SelectQuery_Ast> ParseSelectQuery();
-	std::unique_ptr<SelectExp_Ast> ParseSelectExp();
-	std::unique_ptr<TableExp_Ast> ParseTableExp();
-	std::unique_ptr<FilterExp_Ast> ParseFilterExp();
-	std::unique_ptr<Predicate_Ast> ParsePredicate();
+	std::unique_ptr<Query_Ast> ParseQuery();
+	std::unique_ptr<SelList_Ast> ParseSelList();
+	std::unique_ptr<FromList_Ast> ParseFromList();
+	std::unique_ptr<Condition_Ast> ParseCondition();
 };
+

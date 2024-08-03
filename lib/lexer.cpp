@@ -48,7 +48,11 @@ void Lexer::eatToken() {
             cur_tok = {and_tok, lex};
         } else if (stricmp("or", lex)) {
             cur_tok = {or_tok, lex};
-        }  else {
+        } else if (stricmp("in", lex)) {
+            cur_tok = {in_tok, lex};
+        } else if (stricmp("like", lex)) {
+            cur_tok = {like_tok, lex};
+        } else {
             cur_tok = {identifier_tok, lex};
         }
     } else if (src[src_idx] == '*') {
@@ -56,6 +60,9 @@ void Lexer::eatToken() {
         src_idx++;
     } else if (src[src_idx] == ',') {
         cur_tok = {comma_tok, ","};
+        src_idx++;
+    } else if (src[src_idx] == '=') {
+        cur_tok = {eq_tok, "="};
         src_idx++;
     } else {
         std::string lex;
