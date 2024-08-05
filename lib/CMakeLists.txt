@@ -3,6 +3,7 @@ project(sql-parser)
 add_library(parser 
             lexer.cpp 
             parser.cpp 
+            relalg.cpp
             )
 
 target_include_directories(

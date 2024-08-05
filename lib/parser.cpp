@@ -43,6 +43,84 @@ std::unique_ptr<SelList_Ast> Parser::ParseSelList() {
     }
     return std::make_unique<SelList_Ast>(attributes);
 }
+
+std::unique_ptr<Base_Op> FromList_Ast::LowerToRelalg() {
+    if (relations.size() < 1) return nullptr; // add appropriate semantic information
+    std::unique_ptr<Base_Op> lhs = std::make_unique<Relation>(relations[0]);
+    for (int i=1; i<relations.size(); i++) {
+        auto rhs = std::make_unique<Relation>(relations[1]);
+        lhs = std::make_unique<CartesianProduct_Op>(std::move(lhs), std::move(rhs));
+    }
+    return std::move(lhs);
+}
+
+std::unique_ptr<PredicateExpr> FromList_Ast::LowerPredicate() {
+    return nullptr;
+}
+std::unique_ptr<Base_Op> SelList_Ast::LowerToRelalg() {
+    return nullptr;
+}
+std::unique_ptr<PredicateExpr> SelList_Ast::LowerPredicate() {
+    return nullptr;
+}
+
+std::unique_ptr<Base_Op> Query_Ast::LowerToRelalg() {
+    std::cout << "Query_Ast: Lowering to relational algebra\n";
+    auto relations = fromList->LowerToRelalg();
+    if (relations == nullptr) return nullptr;
+    
+    if (!condition) {
+        return std::make_unique<Projection_Op>(std::move(relations), selList->getAttributes());
+    }
+    auto predicate = condition->LowerPredicate();
+    if (predicate == nullptr) return nullptr;
+    
+    auto filteredRelation = std::make_unique<Selection_Op>(std::move(relations), std::move(predicate));
+    return  std::make_unique<Projection_Op>(std::move(filteredRelation), selList->getAttributes());
+}
+std::unique_ptr<PredicateExpr> Query_Ast::LowerPredicate() {
+    return nullptr;
+}
+
+std::unique_ptr<PredicateExpr> Condition_Ast::LowerPredicate() {
+    return std::move(condition->LowerPredicate());
+}
+
+std::unique_ptr<Base_Op> Condition_Ast::LowerToRelalg() {
+    return nullptr;
+}
+
+std::unique_ptr<PredicateExpr> ConditionalPredicate_Ast::LowerPredicate() {
+    return std::make_unique<LogicalPredicateExpr>(op, std::move(lhs->LowerPredicate()), std::move(rhs->LowerPredicate()));
+}
+
+std::unique_ptr<Base_Op> ConditionalPredicate_Ast::LowerToRelalg() {
+    return nullptr;
+}
+std::unique_ptr<PredicateExpr> ConditionalIn_Ast::LowerPredicate() {
+    std::cout << "ConditionalIn_Ast: Lowering predicate\n";
+    return std::make_unique<ContainsPredicateExpr>(attribute, std::move(query->LowerToRelalg()));
+}
+
+std::unique_ptr<Base_Op> ConditionalIn_Ast::LowerToRelalg() {
+    return nullptr;
+}
+std::unique_ptr<PredicateExpr> ConditionalJoin_Ast::LowerPredicate() {
+    std::cout << "ConditionalJoin_Ast: Lowering predicate\n";
+    return std::make_unique<JoinPredicateExpr>(attr1, attr2);
+}  
+std::unique_ptr<Base_Op> ConditionalJoin_Ast::LowerToRelalg() {
+    return nullptr;
+}
+
+std::unique_ptr<PredicateExpr> ConditionalLike_Ast::LowerPredicate() {
+    std::cout << "ConditionalLike: Lowering predicate\n";
+    return std::make_unique<RegexPredicateExpr>(attribute, pattern);
+}
+std::unique_ptr<Base_Op> ConditionalLike_Ast::LowerToRelalg() {
+    return nullptr;
+}
+
 std::unique_ptr<FromList_Ast> Parser::ParseFromList() {
     std::cout << "Parsing from list\n";
     Token t = lexer->peekToken();
@@ -59,6 +137,9 @@ std::unique_ptr<FromList_Ast> Parser::ParseFromList() {
         t = lexer->peekToken();
     }
     return std::make_unique<FromList_Ast>(attributes);
+}
+std::vector<std::string> SelList_Ast::getAttributes() {
+    return attributes;
 }
 std::unique_ptr<Condition_Ast> Parser::ParseCondition() {
     std::cout << "Parsing condition\n";
