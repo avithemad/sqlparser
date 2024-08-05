@@ -1,0 +1,1 @@
+select a,b from t1, t2 where a1 in select r2, r1 from anotherrelan 

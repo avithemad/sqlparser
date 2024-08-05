@@ -9,10 +9,19 @@ int main() {
     //     std::cout << tok.type << " " << tok.lexeme << std::endl;
     //     lex.eatToken();
     // }
-
-    Parser parser("select a,b from t1, t2 where a1 in select r2, r1 from anotherrelan ");
+    char c;
+    std::string sqlsrc;
+    while((c = getchar())!=EOF) {
+        sqlsrc.push_back(c);
+    }
+    Parser parser(sqlsrc);
     auto sq = parser.ParseQuery();
-    auto ra = sq->LowerToRelalg();
     if (sq == nullptr) std::cout << "Incorrect syntax\n";
     else std::cout << "Parsed successfully\n";
+    auto ra = sq->LowerToRelalg();
+    if (ra == nullptr) std::cout << "Could not lower to relational algebra\n";
+    else {
+        std::cout << "Lowered to relational algebra successfully\n";
+        std::cout << ra->print();
+    }
 }

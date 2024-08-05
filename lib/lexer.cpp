@@ -33,9 +33,9 @@ void Lexer::eatToken() {
     } 
 
     // now parse the tokens
-    if (isalnum(src[src_idx])) {
+    if (isalnum(src[src_idx]) || src[src_idx] == '_') {
         std::string lex;
-        while(isalnum(src[src_idx])) {
+        while(isalnum(src[src_idx]) || src[src_idx] == '_') {
             lex.push_back(src[src_idx++]);
         }
         if (stricmp("select", lex)) {

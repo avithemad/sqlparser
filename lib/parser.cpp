@@ -48,7 +48,7 @@ std::unique_ptr<Base_Op> FromList_Ast::LowerToRelalg() {
     if (relations.size() < 1) return nullptr; // add appropriate semantic information
     std::unique_ptr<Base_Op> lhs = std::make_unique<Relation>(relations[0]);
     for (int i=1; i<relations.size(); i++) {
-        auto rhs = std::make_unique<Relation>(relations[1]);
+        auto rhs = std::make_unique<Relation>(relations[i]);
         lhs = std::make_unique<CartesianProduct_Op>(std::move(lhs), std::move(rhs));
     }
     return std::move(lhs);
@@ -136,6 +136,7 @@ std::unique_ptr<FromList_Ast> Parser::ParseFromList() {
         lexer->eatToken();
         t = lexer->peekToken();
     }
+    for (auto e: attributes) std::cout << e << " "; std::cout << std::endl;
     return std::make_unique<FromList_Ast>(attributes);
 }
 std::vector<std::string> SelList_Ast::getAttributes() {
