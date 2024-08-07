@@ -22,6 +22,7 @@ int main() {
     if (ra == nullptr) std::cout << "Could not lower to relational algebra\n";
     else {
         std::cout << "Lowered to relational algebra successfully\n";
-        std::cout << ra->print();
+        std::cout << "Latex: " << ra->print() << std::endl;
+        std::cout << "Codegen: " << ra->codeGen() << std::endl; 
     }
 }

@@ -40,3 +40,20 @@ condition := <condition> and/or <condition> |
              attribute = attribute |
              attribute like <pattern> |
 ```
+
+## 7th August 2024
+
+- Added a basic pipelined code generation for pandas/dataframe like api. 
+- This needs to be refined further to be represented as an SSA perhaps. 
+
+Todo, next: 
+- For the selList, we change the grammar as follows, NOTE: THIS IS NOT YET IMPLEMENTED.
+
+```
+selList := <expr> | <expr>, <selList>
+expr := const | attribute | <expr> <op> <expr>
+op := +|-|/|*
+```
+the operations are only allowed for numeric(float or int) type of columns. Grammar stays as it is, we parse using simple pratt precedence parsing. 
+
+- Can we directly lower it to for loops and stuff (simple for, pseudo code like), it seems possible.
