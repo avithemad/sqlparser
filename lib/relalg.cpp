@@ -31,16 +31,25 @@ std::string LogicalPredicateExpr::codeGen() {
     std::string res = "{ " + l + " & " + r  + " }";
     return res;
 }
+std::string LogicalPredicateExpr::loopGen() {
+    return "";
+}
 std::string ContainsPredicateExpr::print() {
     return "{ " + attribute + " in " + relation->print() + " }";
 }
 std::string ContainsPredicateExpr::codeGen() {
     return "{ " + attribute + " in " + relation->print() + " }";
 }
+std::string ContainsPredicateExpr::loopGen() {
+    return "";
+}
 std::string RegexPredicateExpr::print() {
     return "";
 }
 std::string RegexPredicateExpr::codeGen() {
+    return "";
+}
+std::string RegexPredicateExpr::loopGen() {
     return "";
 }
 std::string JoinPredicateExpr::print() {
@@ -49,16 +58,30 @@ std::string JoinPredicateExpr::print() {
 std::string JoinPredicateExpr::codeGen() {
     return attr1 + "=" + attr2;
 }
+std::string JoinPredicateExpr::loopGen() {
+    return "";
+}
 std::string Relation::print() {
     return name;
 }
 std::string Relation::codeGen() {
     return "scan(" + name + ")";
 }
+std::string Relation::loopGen() {
+    std::string res = "for tuple in " + name + ": ";
+    return res;
+}
 std::string Selection_Op::print() {
     std::string pred = predicate->print();
     std::string op = operand->print();
     return "\\sigma_" + pred + "(" + op + ")"; 
+}
+std::string Selection_Op::loopGen() {
+    std::string res = operand->loopGen();
+    res += "\n\t";
+    res += "if " + predicate->loopGen(); 
+    res += "\n\t";
+    return res;
 }
 std::string Selection_Op::codeGen() {
     return operand->codeGen() + ".map(" + predicate->codeGen() + ")";
@@ -72,6 +95,15 @@ std::string Projection_Op::print() {
         else attrs += e;
     }
     return "\\pi_{ " + attrs + " }(" + operand->print() + ")";
+}
+std::string Projection_Op::loopGen() {
+    std::string res = operand->loopGen();
+    res += "\n\t";
+    for (auto e: attributes) {
+        res += e;
+        res += "\n\t";
+    }
+    return res;
 }
 std::string listToString(std::vector<std::string> v) {
     std::string res;
@@ -92,16 +124,25 @@ std::string Union_Op::print() {
 std::string Union_Op::codeGen() {
     return "";
 }
+std::string Union_Op::loopGen() {
+    return "";
+}
 std::string Intersection_Op::print() {
     return "";
 }
 std::string Intersection_Op::codeGen() {
     return "";
 }
+std::string Intersection_Op::loopGen() {
+    return "";
+}
 std::string Difference_Op::print() {
     return "";
 }
 std::string Difference_Op::codeGen() {
+    return "";
+}
+std::string Difference_Op::loopGen() {
     return "";
 }
 std::string CartesianProduct_Op::print() {
@@ -111,9 +152,17 @@ std::string CartesianProduct_Op::print() {
 std::string CartesianProduct_Op::codeGen() {
     return relation1->codeGen() + ".crossProduct(" + relation2->codeGen() + ")";
 }
+std::string CartesianProduct_Op::loopGen() {
+    std::string res = relation1->loopGen();
+    res += relation2->loopGen();
+    return res;
+}
 std::string Join_Op::print() {
     return "";
 }
 std::string Join_Op::codeGen() {
+    return "";
+}
+std::string Join_Op::loopGen() {
     return "";
 }

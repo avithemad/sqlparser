@@ -24,5 +24,7 @@ int main() {
         std::cout << "Lowered to relational algebra successfully\n";
         std::cout << "Latex: " << ra->print() << std::endl;
         std::cout << "Codegen: " << ra->codeGen() << std::endl; 
+        std::cout << "Loopgen: " << std::endl;
+        std::cout << ra->loopGen();
     }
 }

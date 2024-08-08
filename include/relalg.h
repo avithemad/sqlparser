@@ -7,12 +7,14 @@ public:
 	virtual ~PredicateExpr() = default;
 	virtual std::string print() = 0;
 	virtual std::string codeGen() = 0;
+	virtual std::string loopGen() = 0;
 };
 class Base_Op {
 public:
 	virtual ~Base_Op() = default;
 	virtual std::string print() = 0;
 	virtual std::string codeGen() = 0;
+	virtual std::string loopGen() = 0;
 };
 
 class LogicalPredicateExpr: public PredicateExpr {
@@ -23,6 +25,7 @@ public:
 	LogicalPredicateExpr(int op, std::unique_ptr<PredicateExpr> lhs, std::unique_ptr<PredicateExpr> rhs);
 	std::string print();
 	std::string codeGen();
+	std::string loopGen();
 };
 
 class ContainsPredicateExpr: public PredicateExpr {
@@ -32,6 +35,7 @@ public:
 	ContainsPredicateExpr(std::string attr, std::unique_ptr<Base_Op> relation); 
 	std::string print();
 	std::string codeGen();
+	std::string loopGen();
 };
 
 class RegexPredicateExpr: public PredicateExpr {
@@ -41,6 +45,7 @@ public:
 	RegexPredicateExpr(std::string attr, std::string pattern);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 class JoinPredicateExpr: public PredicateExpr {
@@ -50,6 +55,7 @@ public:
 	JoinPredicateExpr(std::string attr1, std::string attr2); 
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 // this is actually equivalent to table scan operation
@@ -59,6 +65,7 @@ public:
 	Relation(std::string name);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 class Selection_Op : public Base_Op {
@@ -68,6 +75,7 @@ public:
 	Selection_Op(std::unique_ptr<Base_Op> operand, std::unique_ptr<PredicateExpr> predicate);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 
@@ -78,6 +86,7 @@ public:
 	Projection_Op(std::unique_ptr<Base_Op> operand, std::vector<std::string> attrs);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 
@@ -88,6 +97,7 @@ public:
 	Union_Op(std::unique_ptr<Base_Op> relation1, std::unique_ptr<Base_Op> relation2);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 
@@ -98,6 +108,7 @@ public:
 	Intersection_Op(std::unique_ptr<Base_Op> relation1, std::unique_ptr<Base_Op> relation2);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 class Difference_Op : public Base_Op {
@@ -107,6 +118,7 @@ public:
 	Difference_Op(std::unique_ptr<Base_Op> relation1, std::unique_ptr<Base_Op> relation2);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 
@@ -117,6 +129,7 @@ public:
 	CartesianProduct_Op(std::unique_ptr<Base_Op> relation1, std::unique_ptr<Base_Op> relation2);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
 
 
@@ -127,4 +140,5 @@ public:
 	Join_Op(std::unique_ptr<Base_Op> relation1, std::unique_ptr<Base_Op> relation2);
 	std::string codeGen();
 	std::string print();
+	std::string loopGen();
 };
